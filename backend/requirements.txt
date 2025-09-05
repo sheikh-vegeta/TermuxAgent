@@ -1,4 +1,7 @@
 fastapi
 uvicorn[standard]
 httpx
+google-api-python-client
+oauth2client
+google-generativeai
 # The user can add other dependencies like 'click', 'redis', etc., as they build out the functionality.
