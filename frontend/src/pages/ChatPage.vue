@@ -68,56 +68,84 @@ onMounted(() => {
     const eventData = JSON.parse(event.data);
     let message = {};
 
+    let outputHtml = '';
     switch (eventData.type) {
-      case 'status':
-        message = { id: Date.now(), author: 'system', text: eventData.data };
-        isLoading.value = true;
-        break;
+        case 'status':
+            message = { id: Date.now(), author: 'system', text: eventData.data };
+            // Don't set isLoading for every status, only for the final result/error
+            break;
 
-      case 'result':
-        const resultData = eventData.data;
-        const toolName = eventData.tool_name;
-        let outputHtml = '';
+        case 'plan':
+            outputHtml = `<h4>Research Plan:</h4><ol>`;
+            eventData.data.forEach(step => {
+                outputHtml += `<li>${step}</li>`;
+            });
+            outputHtml += `</ol>`;
+            message = { id: Date.now(), author: 'agent', text: outputHtml };
+            isLoading.value = true; // Research has started
+            break;
 
-        if (toolName === 'shell') {
-            outputHtml = `<details open><summary><strong>Shell Result (Code: ${resultData.returncode})</strong></summary>`;
-            outputHtml += `<p><strong>Command:</strong> <code>${resultData.command}</code></p>`;
-            if (resultData.stdout) {
-                outputHtml += `<strong>STDOUT:</strong><pre>${resultData.stdout}</pre>`;
-            }
-            if (resultData.stderr) {
-                outputHtml += `<strong>STDERR:</strong><pre>${resultData.stderr}</pre>`;
-            }
-            outputHtml += `</details>`;
-        } else if (toolName === 'google_search') {
-            outputHtml = `<details open><summary><strong>Google Search Results</strong></summary>`;
-            if (resultData.status === 'success' && resultData.results.length > 0) {
+        case 'plan_step_result':
+            const stepResult = eventData.data;
+            outputHtml = `<details><summary><strong>Step ${eventData.step} Results:</strong> ${stepResult.results.length} found</summary>`;
+            if (stepResult.status === 'success' && stepResult.results.length > 0) {
                 outputHtml += '<ul>';
-                resultData.results.forEach(res => {
+                stepResult.results.forEach(res => {
                     outputHtml += `<li><a href="${res.link}" target="_blank">${res.title}</a><p>${res.snippet}</p></li>`;
                 });
                 outputHtml += '</ul>';
             } else {
-                outputHtml += `<p>No results found or an error occurred: ${resultData.message || ''}</p>`;
+                outputHtml += `<p>No results found or an error occurred: ${stepResult.message || ''}</p>`;
             }
             outputHtml += `</details>`;
-        } else {
-            // Generic fallback for unknown tools
-            outputHtml = `<details open><summary><strong>Tool Result</strong></summary><pre>${JSON.stringify(resultData, null, 2)}</pre></details>`;
-        }
+            message = { id: Date.now(), author: 'agent', text: outputHtml };
+            break;
 
-        message = { id: Date.now(), author: 'agent', text: outputHtml };
-        isLoading.value = false;
-        break;
+        case 'final_report':
+            // Using a library like 'marked' would be better for production
+            // but for now, we can just replace newlines with <br>
+            const reportText = eventData.data.replace(/\n/g, '<br>');
+            outputHtml = `<div class="final-report"><h4>Final Report</h4>${reportText}</div>`;
+            message = { id: Date.now(), author: 'agent', text: outputHtml };
+            isLoading.value = false; // Research is finished
+            break;
 
-      case 'error':
-        message = { id: Date.now(), author: 'system', text: `<strong>Backend Error:</strong> ${eventData.data}` };
-        isLoading.value = false;
-        break;
+        case 'result': // This is for single tool_use mode
+            const resultData = eventData.data;
+            const toolName = eventData.tool_name;
+            if (toolName === 'shell') {
+                outputHtml = `<details open><summary><strong>Shell Result (Code: ${resultData.returncode})</strong></summary>`;
+                outputHtml += `<p><strong>Command:</strong> <code>${resultData.command}</code></p>`;
+                if (resultData.stdout) outputHtml += `<strong>STDOUT:</strong><pre>${resultData.stdout}</pre>`;
+                if (resultData.stderr) outputHtml += `<strong>STDERR:</strong><pre>${resultData.stderr}</pre>`;
+                outputHtml += `</details>`;
+            } else if (toolName === 'google_search') {
+                outputHtml = `<details open><summary><strong>Google Search Results</strong></summary>`;
+                if (resultData.status === 'success' && resultData.results.length > 0) {
+                    outputHtml += '<ul>';
+                    resultData.results.forEach(res => {
+                        outputHtml += `<li><a href="${res.link}" target="_blank">${res.title}</a><p>${res.snippet}</p></li>`;
+                    });
+                    outputHtml += '</ul>';
+                } else {
+                    outputHtml += `<p>No results found or an error occurred: ${resultData.message || ''}</p>`;
+                }
+                outputHtml += `</details>`;
+            } else {
+                outputHtml = `<details open><summary><strong>Tool Result</strong></summary><pre>${JSON.stringify(resultData, null, 2)}</pre></details>`;
+            }
+            message = { id: Date.now(), author: 'agent', text: outputHtml };
+            isLoading.value = false;
+            break;
 
-      default:
-        console.warn("Unknown SSE event type:", eventData);
-        message = { id: Date.now(), author: 'system', text: `Unknown event: ${event.data}` };
+        case 'error':
+            message = { id: Date.now(), author: 'system', text: `<strong>Backend Error:</strong> ${eventData.data}` };
+            isLoading.value = false;
+            break;
+
+        default:
+            console.warn("Unknown SSE event type:", eventData);
+            message = { id: Date.now(), author: 'system', text: `Unknown event: ${event.data}` };
     }
 
     messages.value.push(message);
@@ -198,5 +226,18 @@ li p {
     margin: 0.25rem 0 0 0;
     font-size: 0.9em;
     color: #ccc;
+}
+ol {
+    padding-left: 20px;
+}
+.final-report {
+    border: 1px solid #00aae4;
+    border-radius: 8px;
+    padding: 1rem;
+    background-color: #2d2d30;
+}
+.final-report h4 {
+    margin-top: 0;
+    color: #00aae4;
 }
 </style>
