@@ -1,6 +1,8 @@
 {
   "api_keys": {
-    "gemini": "YOUR_GEMINI_API_KEY_HERE"
+    "gemini": "YOUR_GEMINI_API_KEY_HERE",
+    "google_api_key": "YOUR_GOOGLE_API_KEY_HERE",
+    "google_cse_id": "YOUR_GOOGLE_CSE_ID_HERE"
   },
   "preferences": {
     "default_model": "gemini-1.5-pro",

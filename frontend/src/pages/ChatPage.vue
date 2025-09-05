@@ -75,17 +75,38 @@ onMounted(() => {
         break;
 
       case 'result':
-        const result = eventData.data;
-        let output = `<details><summary><strong>Command Result (Code: ${result.returncode})</strong></summary>`;
-        output += `<p><strong>Command:</strong> <code>${result.command}</code></p>`;
-        if (result.stdout) {
-          output += `<strong>STDOUT:</strong><pre>${result.stdout}</pre>`;
+        const resultData = eventData.data;
+        const toolName = eventData.tool_name;
+        let outputHtml = '';
+
+        if (toolName === 'shell') {
+            outputHtml = `<details open><summary><strong>Shell Result (Code: ${resultData.returncode})</strong></summary>`;
+            outputHtml += `<p><strong>Command:</strong> <code>${resultData.command}</code></p>`;
+            if (resultData.stdout) {
+                outputHtml += `<strong>STDOUT:</strong><pre>${resultData.stdout}</pre>`;
+            }
+            if (resultData.stderr) {
+                outputHtml += `<strong>STDERR:</strong><pre>${resultData.stderr}</pre>`;
+            }
+            outputHtml += `</details>`;
+        } else if (toolName === 'google_search') {
+            outputHtml = `<details open><summary><strong>Google Search Results</strong></summary>`;
+            if (resultData.status === 'success' && resultData.results.length > 0) {
+                outputHtml += '<ul>';
+                resultData.results.forEach(res => {
+                    outputHtml += `<li><a href="${res.link}" target="_blank">${res.title}</a><p>${res.snippet}</p></li>`;
+                });
+                outputHtml += '</ul>';
+            } else {
+                outputHtml += `<p>No results found or an error occurred: ${resultData.message || ''}</p>`;
+            }
+            outputHtml += `</details>`;
+        } else {
+            // Generic fallback for unknown tools
+            outputHtml = `<details open><summary><strong>Tool Result</strong></summary><pre>${JSON.stringify(resultData, null, 2)}</pre></details>`;
         }
-        if (result.stderr) {
-          output += `<strong>STDERR:</strong><pre>${result.stderr}</pre>`;
-        }
-        output += `</details>`;
-        message = { id: Date.now(), author: 'agent', text: output };
+
+        message = { id: Date.now(), author: 'agent', text: outputHtml };
         isLoading.value = false;
         break;
 
@@ -154,5 +175,28 @@ details {
 summary {
     cursor: pointer;
     font-weight: bold;
+}
+ul {
+    list-style-type: none;
+    padding-left: 0;
+}
+li {
+    border-bottom: 1px solid #444;
+    padding: 0.5rem 0;
+}
+li:last-child {
+    border-bottom: none;
+}
+li a {
+    color: #8bf;
+    text-decoration: none;
+}
+li a:hover {
+    text-decoration: underline;
+}
+li p {
+    margin: 0.25rem 0 0 0;
+    font-size: 0.9em;
+    color: #ccc;
 }
 </style>
