@@ -4,12 +4,10 @@
   },
   "preferences": {
     "default_model": "gemini-1.5-pro",
-    "storage_path": "./.agent_storage"
+    "default_distro": "ubuntu"
   },
-  "redis": {
-    "host": "localhost",
-    "port": 6379,
-    "db": 0,
-    "use_redis": false
+  "server": {
+    "main_port": 8000,
+    "sandbox_port": 8080
   }
 }

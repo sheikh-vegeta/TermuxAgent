@@ -1,93 +1,76 @@
-# Termux AI Agent
+# Termux AI Agent (Web-Centric Edition)
 
-An AI-powered autonomous coding agent designed to run directly within the Termux environment on Android. This agent can help with code generation, refactoring, debugging, and more, using Google's Gemini API and a command-line interface.
+This project is a full-stack, AI-powered autonomous agent designed to run entirely within a Termux environment on Android. It features a web-based UI, a sandboxed browser for tool use, and a powerful FastAPI backend, all orchestrated to provide a rich, interactive agent experience on a mobile device.
 
-## Features
+## Architecture Overview
 
-- **Termux-Native:** Runs entirely within the Termux terminal, with no external dependencies on desktop IDEs.
-- **AI-Powered Coding:** Uses the Gemini API for intelligent code analysis, generation, and refactoring.
-- **Command-Line Interface:** Interact with the agent through a simple and powerful CLI built with Click.
-- **Safe Execution:** Utilizes `proot-distro` to execute code in a sandboxed Alpine Linux environment, preventing accidental damage to your system.
-- **Automated Setup:** A simple `install.sh` script to set up all dependencies in Termux.
-- **Configurable:** Uses a `config.json` file to manage API keys and user preferences.
-- **Extensible:** Built with a modular structure (`main.py`, `mcp.py`, `safety.py`) that is easy to extend.
+The agent is composed of several key components that work together:
+
+-   **Web Frontend (Vue/Vite):** A modern, reactive user interface running on port `5173`. This is the primary way to interact with the agent. It includes a chat interface and an embedded noVNC viewer for the sandboxed browser.
+-   **Main Backend (FastAPI):** The primary server running on port `8000`. It manages agent sessions, communicates with the AI model (Gemini), and streams events to the frontend via Server-Sent Events (SSE).
+-   **Sandbox API (FastAPI):** A secondary server running on port `8080`. This server runs *inside* the sandbox and exposes an API for the main backend to control tools within the isolated environment.
+-   **Sandbox Environment (proot-distro):** An Ubuntu environment running under `proot-distro`. This is where all potentially unsafe operations, like running a web browser or executing code, take place.
+-   **Browser Tools (XVFB + Chromium + VNC):** A full-featured Chromium browser runs headlessly inside the sandbox using a virtual display (XVFB). Its interface is served via a VNC server on port `5900` and proxied by `websockify` on port `6080` to be compatible with the noVNC web client.
 
 ## Setup Instructions
 
-These instructions will guide you through setting up the Termux AI Agent on your Android device.
+This guide will walk you through setting up the entire environment from a fresh Termux installation.
 
-### 1. Install Termux
-First, install the Termux application from F-Droid. It is the recommended source for the latest, most stable version.
+### Step 1: Install Termux Base Dependencies
 
-### 2. Clone the Repository
-Open Termux and install `git`, then clone this repository:
+First, run the script to install the necessary packages in your main Termux environment.
+
 ```bash
-pkg update -y && pkg install -y git
-git clone https://github.com/sheikh-vegeta/TermuxAgent.git
-cd TermuxAgent
+bash scripts/install_termux_deps.sh
 ```
 
-### 3. Run the Installer
-Execute the installation script. This will install all necessary packages, Python dependencies, and set up the sandbox environment.
-```bash
-bash install.sh
-```
+### Step 2: Install and Set Up the Ubuntu Sandbox
 
-### 4. Configure the Agent
-Create your configuration file from the example template and add your Gemini API key.
+Next, install the Ubuntu distribution using `proot-distro` and then run the setup script *inside* it.
 
-1.  **Copy the config file:**
+1.  **Install the distro:**
     ```bash
-    cp backend/config.json.example backend/config.json
+    proot-distro install ubuntu
     ```
-2.  **Edit the config file:**
-    Use a terminal editor like `nano` or `vim` to edit `backend/config.json` and insert your API key.
+2.  **Log in to the distro:**
     ```bash
-    nano backend/config.json
+    proot-distro login ubuntu
+    ```
+3.  **Inside Ubuntu, run the setup script:**
+    You will need to navigate to the project directory. The Termux home directory is typically mounted at `/data/data/com.termux/files/home`.
+    ```bash
+    # Inside the Ubuntu session
+    cd /data/data/com.termux/files/home/TermuxAgent # Adjust path if needed
+    bash scripts/setup_ubuntu.sh
+    exit # Exit the Ubuntu session when done
     ```
 
-## Usage
+### Step 3: Configure the Agent
 
-The agent consists of a backend server and a CLI client. You will need to run them in separate Termux sessions.
+Copy the example configuration file and add your Gemini API key.
 
-### Session 1: Start the Backend Server
-In your first Termux session, navigate to the `backend` directory and start the FastAPI server with `uvicorn`.
 ```bash
-cd backend
-uvicorn main:app --host 0.0.0.0 --port 8000
-```
-The server will now be running and listening for requests.
-
-### Session 2: Use the CLI Client
-Open a new Termux session (swipe from the left edge and tap "New Session"). In this new session, you can use the `cli.py` script to interact with the agent.
-
-**Get help:**
-```bash
-python backend/cli.py --help
+cp backend/config.json.example backend/config.json
+nano backend/config.json
 ```
 
-**Example: Refactor a file**
-To ask the AI to refactor a function in a file named `my_script.py`:
-```bash
-python backend/cli.py refactor "Make this function more efficient and add comments" --file my_script.py
-```
+## Running the Agent
 
-**Example: Refactor a specific selection**
-To refactor lines 10 through 25 of `my_script.py`:
-```bash
-python backend/cli.py refactor "Rename the variables to be more descriptive" --file my_script.py --line-start 10 --line-end 25
-```
+To run the agent, you need to start all of its services. The provided `run_agent.sh` script automates most of this.
 
-**Example: Use dry-run**
-To see the suggested changes without applying them, use the `--dry-run` flag:
-```bash
-python backend/cli.py refactor "Convert this to a list comprehension" --file my_script.py --dry-run
-```
+1.  **Start the services:**
+    From the project root directory, run the master script:
+    ```bash
+    bash scripts/run_agent.sh
+    ```
+2.  **Follow the On-Screen Instructions:**
+    The script will start the backend servers and the frontend dev server. It will then prompt you to open a **new Termux session** to start the browser tools inside the Ubuntu sandbox. Follow the instructions printed in the terminal carefully.
 
-**Example: Update the agent**
-To pull the latest changes from the GitHub repository:
-```bash
-python backend/cli.py self-update
-```
----
-*This project is under active development.*
+## Verification
+
+Once all services are running, you can verify that everything is working correctly:
+
+1.  **Web Frontend:** Open a browser on your Android device (or another device on the same network) and navigate to `http://<your-termux-ip>:5173`. You should see the Vue frontend load.
+2.  **Backend Connection:** The chat UI should connect to the backend, and you should see system events streamed from the server.
+3.  **Browser Tool:** The `ToolPanel.vue` component should display the noVNC interface, showing the desktop of the sandboxed Chromium browser.
+4.  **Chrome DevTools:** You can access the Chrome DevTools Protocol for the sandboxed browser at `http://<your-termux-ip>:9222`.
