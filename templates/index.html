@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Termux Agent - Chat</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Termux AI Agent</h1>
+        <div class="nav-links">
+            <a href="/" class="active">Chat</a>
+            <a href="/terminal">Terminal</a>
+        </div>
+        <div class="api-key-container">
+            <label for="apiKey">API Key:</label>
+            <input type="password" id="apiKey" placeholder="Enter your API key...">
+            <button id="saveApiKey">Save</button>
+        </div>
+        <div id="chat-window">
+            <div id="chat-history">
+                <div class="message ai-message">
+                    <p>Hello! I am your Termux expert assistant. How can I help you today?</p>
+                </div>
+            </div>
+            <div id="input-container">
+                <input type="text" id="message-input" placeholder="Type your message here...">
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

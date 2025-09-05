@@ -1,0 +1,155 @@
+openapi: 3.0.2
+info:
+  title: Termux Agent API
+  description: |
+    An API for a Termux-aware AI assistant that can chat and execute commands.
+  version: 1.0.0
+
+servers:
+  - url: /
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+security:
+  - ApiKeyAuth: []
+
+paths:
+  /api/chat:
+    post:
+      summary: Get an AI chat response
+      description: |
+        Sends a message and conversation history to the Gemini-powered AI assistant
+        and receives a text reply.
+      tags:
+        - Chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: The new message from the user.
+                  example: "How do I install a package?"
+                history:
+                  type: array
+                  description: The past conversation history to provide context.
+                  items:
+                    type: object
+                    properties:
+                      role:
+                        type: string
+                        enum: [user, model]
+                      parts:
+                        type: array
+                        items:
+                          type: string
+              required:
+                - message
+      responses:
+        '200':
+          description: Successful response from the AI.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reply:
+                    type: string
+                    description: The AI's response message.
+                  history:
+                    type: array
+                    description: The updated conversation history.
+        '400':
+          description: Invalid request (e.g., missing 'message' field).
+        '401':
+          description: Unauthorized (invalid or missing API key).
+        '503':
+          description: AI service is unavailable.
+
+  /api/execute:
+    post:
+      summary: Execute a shell command
+      description: |
+        Executes a shell command on the host or inside a proot-distro VM and
+        streams the output (stdout and stderr) back in real-time.
+      tags:
+        - Execution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                command:
+                  type: string
+                  description: The shell command to execute.
+                  example: "ls -l /"
+                in_vm:
+                  type: boolean
+                  description: Whether to execute the command inside the VM. Defaults to false.
+                  example: true
+              required:
+                - command
+      responses:
+        '200':
+          description: A real-time stream of the command's output.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: |
+                  Executing: ls -l /
+                  total 12
+                  drwxr-xr-x   2 root root 4096 Sep  5 03:30 bin
+                  drwxr-xr-x   2 root root 4096 Sep  5 03:30 etc
+                  --- Command finished with exit code 0 ---
+        '400':
+          description: Invalid request (e.g., missing 'command' field).
+        '401':
+          description: Unauthorized (invalid or missing API key).
+
+  /api/device-check:
+    get:
+      summary: Check Termux environment
+      description: |
+        Performs a series of checks on the host environment to validate compatibility
+        and report on installed tools.
+      tags:
+        - Execution
+      responses:
+        '200':
+          description: A JSON object with the results of the compatibility checks.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  architecture:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      output:
+                        type: string
+                        example: aarch64
+                  proot_distro_installed:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        example: success
+                      output:
+                        type: string
+                        example: /data/data/com.termux/files/usr/bin/proot-distro
+        '401':
+          description: Unauthorized (invalid or missing API key).
