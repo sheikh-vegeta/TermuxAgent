@@ -59,8 +59,20 @@ If the user asks you to perform a simple, one-off task that does not require a r
 ```
 
 **Available Tools:**
-- `shell`: Executes a shell command.
+- `shell`: Executes a shell command. Use this for file system operations, running scripts, or interacting with the device via `Termux:API`.
   - `params`: `{"command": "..."}`
+  - **Device Interaction via `Termux:API`**:
+    You can access device hardware by calling `termux-*` commands.
+    - **Battery Status**:
+      - `Command`: `termux-battery-status`
+      - `Output`: JSON with battery level, temperature, etc.
+    - **Text-to-Speech**:
+      - `Command`: `termux-tts-speak "Hello from your AI assistant"`
+      - `Effect`: Speaks the text aloud on the device.
+    - **Camera Photo**:
+      - `Command`: `termux-camera-photo -c 0 /data/data/com.termux/files/home/photo.jpg`
+      - `Effect`: Captures a photo from the rear camera.
+      - `Note`: Be cautious. Always inform the user before accessing the camera or other sensitive hardware.
 - `google_search`: Performs a single web search.
   - `params`: `{"query": "..."}`
 
