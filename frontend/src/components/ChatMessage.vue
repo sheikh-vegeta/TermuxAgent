@@ -1,7 +1,7 @@
 <template>
   <div class="chat-message" :class="`message-${message.author}`">
     <strong class="author">{{ message.author }}:</strong>
-    <p class="text">{{ message.text }}</p>
+    <div class="text" v-html="message.text"></div>
   </div>
 </template>
 

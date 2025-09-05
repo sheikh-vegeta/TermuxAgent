@@ -1,44 +1,65 @@
-import subprocess
+import httpx
 import asyncio
 
 class SandboxManager:
     """
-    Manages the proot-distro sandbox environment.
+    Manages communication with the Sandbox API which runs inside the proot-distro.
     """
-    def __init__(self, distro="ubuntu"):
-        self.distro = distro
-        self.process = None
+    def __init__(self, api_base_url="http://127.0.0.1:8080"):
+        self.api_base_url = api_base_url
+        print(f"SandboxManager configured to use Sandbox API at: {self.api_base_url}")
 
-    def start(self):
+    async def run_command(self, command: str) -> dict:
         """
-        Starts a login session in the specified distro.
-        This is a simplified example; a real implementation would handle
-        process management more robustly.
+        Sends a command to the Sandbox API for execution and returns the result.
+
+        Args:
+            command: The shell command to execute in the sandbox.
+
+        Returns:
+            A dictionary containing the execution result from the Sandbox API.
         """
+        url = f"{self.api_base_url}/execute"
+        payload = {"command": command}
+
+        print(f"Sending command to sandbox: '{command}'")
+
         try:
-            # The command needs to be run in the background to not block.
-            # A more robust solution would use asyncio.create_subprocess_shell
-            self.process = subprocess.Popen(
-                ["proot-distro", "login", self.distro],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
-            print(f"Started sandbox session for distro '{self.distro}' with PID: {self.process.pid}")
-        except FileNotFoundError:
-            print("Error: 'proot-distro' command not found. Please ensure it is installed.")
-            raise
-
-    def stop(self):
-        """Stops the sandbox process."""
-        if self.process:
-            self.process.terminate()
-            print(f"Stopped sandbox session for distro '{self.distro}'.")
-
-    async def stream_events(self):
-        """
-        A dummy event generator to simulate streaming events from the sandbox.
-        In a real application, this would tail logs or use another IPC mechanism.
-        """
-        for i in range(10):
-            yield f"Event {i} from the sandbox."
-            await asyncio.sleep(1)
+            # Using a longer timeout to allow for slow commands
+            async with httpx.AsyncClient(timeout=120.0) as client:
+                response = await client.post(url, json=payload)
+                response.raise_for_status()  # Raise an exception for 4xx/5xx responses
+                return response.json()
+        except httpx.ConnectError as e:
+            error_msg = f"Connection to Sandbox API failed: {e}. Is the sandbox and its API server running?"
+            print(error_msg)
+            return {
+                "status": "error",
+                "message": error_msg,
+                "command": command,
+                "stdout": "",
+                "stderr": str(e),
+                "returncode": -1,
+            }
+        except httpx.RequestError as e:
+            error_msg = f"An error occurred while requesting the Sandbox API: {e}"
+            print(error_msg)
+            return {
+                "status": "error",
+                "message": error_msg,
+                "command": command,
+                "stdout": "",
+                "stderr": str(e),
+                "returncode": -1,
+            }
+        except Exception as e:
+            error_msg = f"An unexpected error occurred: {e}"
+            print(error_msg)
+            return {
+                "status": "error",
+                "message": error_msg,
+                "command": command,
+                "stdout": "",
+                "stderr": str(e),
+                "returncode": -1,
+            }
