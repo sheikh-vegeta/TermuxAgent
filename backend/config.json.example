@@ -1,0 +1,15 @@
+{
+  "api_keys": {
+    "gemini": "YOUR_GEMINI_API_KEY_HERE"
+  },
+  "preferences": {
+    "default_model": "gemini-1.5-pro",
+    "storage_path": "./.agent_storage"
+  },
+  "redis": {
+    "host": "localhost",
+    "port": 6379,
+    "db": 0,
+    "use_redis": false
+  }
+}
