@@ -9,11 +9,10 @@ For a fresh Termux environment, you can use the automated installer. This will s
 Run the following command in your Termux terminal:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/sheikh-vegeta/TermuxAgent/main/install.sh | bash
 ```
-> **Note:** Please replace `YOUR_USERNAME` and `YOUR_REPO` with the actual GitHub username and repository name.
 
-After the installation is complete, you must edit `backend/config.json` to add your API keys.
+After the installation is complete, you must edit `backend/config.json` to add your API keys before running the agent.
 
 ## Manual Installation
 
