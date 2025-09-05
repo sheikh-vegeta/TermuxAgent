@@ -2,19 +2,22 @@
 
 This project is a full-stack, AI-powered autonomous agent designed to run entirely within a Termux environment on Android. It features a web-based UI, a sandboxed browser for tool use, and a powerful FastAPI backend, all orchestrated to provide a rich, interactive agent experience on a mobile device.
 
-## Architecture Overview
+## Easy Installation (Recommended)
 
-The agent is composed of several key components that work together:
+For a fresh Termux environment, you can use the automated installer. This will set up all dependencies and configurations for you.
 
--   **Web Frontend (Vue/Vite):** A modern, reactive user interface running on port `5173`. This is the primary way to interact with the agent. It includes a chat interface and an embedded noVNC viewer for the sandboxed browser.
--   **Main Backend (FastAPI):** The primary server running on port `8000`. It manages agent sessions, communicates with the AI model (Gemini), and streams events to the frontend via Server-Sent Events (SSE).
--   **Sandbox API (FastAPI):** A secondary server running on port `8080`. This server runs *inside* the sandbox and exposes an API for the main backend to control tools within the isolated environment.
--   **Sandbox Environment (proot-distro):** An Ubuntu environment running under `proot-distro`. This is where all potentially unsafe operations, like running a web browser or executing code, take place.
--   **Browser Tools (XVFB + Chromium + VNC):** A full-featured Chromium browser runs headlessly inside the sandbox using a virtual display (XVFB). Its interface is served via a VNC server on port `5900` and proxied by `websockify` on port `6080` to be compatible with the noVNC web client.
+Run the following command in your Termux terminal:
 
-## Setup Instructions
+```bash
+curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/install.sh | bash
+```
+> **Note:** Please replace `YOUR_USERNAME` and `YOUR_REPO` with the actual GitHub username and repository name.
 
-This guide will walk you through setting up the entire environment from a fresh Termux installation.
+After the installation is complete, you must edit `backend/config.json` to add your API keys.
+
+## Manual Installation
+
+For advanced users or for debugging purposes, you can follow these manual setup steps.
 
 ### Step 1: Install Termux Base Dependencies
 
