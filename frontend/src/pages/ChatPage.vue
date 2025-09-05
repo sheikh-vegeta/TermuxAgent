@@ -1,45 +1,113 @@
 <template>
   <div class="chat-page">
-    <div class="chat-container">
+    <div class="chat-container" ref="chatContainer">
       <ChatMessage v-for="(msg, index) in messages" :key="index" :message="msg" />
     </div>
-    <ChatInput @send="sendMessage" />
+    <ChatInput @send="sendMessage" :is-loading="isLoading" />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import ChatMessage from '../components/ChatMessage.vue'
-import ChatInput from '../components/ChatInput.vue'
+import { ref, onMounted, nextTick } from 'vue';
+import ChatMessage from '../components/ChatMessage.vue';
+import ChatInput from '../components/ChatInput.vue';
 
-const messages = ref([])
+const messages = ref([]);
+const isLoading = ref(false);
+const chatContainer = ref(null);
 
-// Function to handle sending messages
-const sendMessage = (text) => {
-  if (text.trim() === '') return;
-  messages.value.push({ id: Date.now(), author: 'user', text: text });
-  // Here you would send the message to the backend API
-  // e.g., fetch('/api/chat', { method: 'POST', ... })
+const scrollToBottom = () => {
+  nextTick(() => {
+    if (chatContainer.value) {
+      chatContainer.value.scrollTop = chatContainer.value.scrollHeight;
+    }
+  });
+};
 
-  // Dummy response for demonstration
-  setTimeout(() => {
-    messages.value.push({ id: Date.now(), author: 'agent', text: `Received: "${text}"` });
-  }, 1000);
-}
+// Function to handle sending messages to the backend
+const sendMessage = async (text) => {
+  if (text.trim() === '' || isLoading.value) return;
+
+  isLoading.value = true;
+  messages.value.push({ id: Date.now(), author: 'user', text });
+  scrollToBottom();
+
+  try {
+    const response = await fetch('/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: text }),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Backend request failed');
+    }
+  } catch (error) {
+    console.error('Error sending message:', error);
+    messages.value.push({
+      id: Date.now(),
+      author: 'system',
+      text: `<strong>Error:</strong> Could not send message to the backend. ${error.message}`,
+    });
+    isLoading.value = false;
+  }
+  // The result will be displayed via the SSE stream, so we don't need to handle it here.
+  // The isLoading flag is reset by the SSE handler when a result or error arrives.
+};
 
 // Setup Server-Sent Events (SSE) listener
 onMounted(() => {
-  const eventSource = new EventSource('/sse'); // Connects to the FastAPI backend
+  messages.value.push({ id: Date.now(), author: 'system', text: 'Connecting to agent...'});
+  const eventSource = new EventSource('/sse');
+
+  eventSource.onopen = () => {
+    messages.value.push({ id: Date.now(), author: 'system', text: 'Connection established. Ready for commands.'});
+  };
 
   eventSource.onmessage = (event) => {
-    // Add server events to the chat history
-    messages.value.push({ id: Date.now(), author: 'system', text: event.data });
+    const eventData = JSON.parse(event.data);
+    let message = {};
+
+    switch (eventData.type) {
+      case 'status':
+        message = { id: Date.now(), author: 'system', text: eventData.data };
+        isLoading.value = true;
+        break;
+
+      case 'result':
+        const result = eventData.data;
+        let output = `<details><summary><strong>Command Result (Code: ${result.returncode})</strong></summary>`;
+        output += `<p><strong>Command:</strong> <code>${result.command}</code></p>`;
+        if (result.stdout) {
+          output += `<strong>STDOUT:</strong><pre>${result.stdout}</pre>`;
+        }
+        if (result.stderr) {
+          output += `<strong>STDERR:</strong><pre>${result.stderr}</pre>`;
+        }
+        output += `</details>`;
+        message = { id: Date.now(), author: 'agent', text: output };
+        isLoading.value = false;
+        break;
+
+      case 'error':
+        message = { id: Date.now(), author: 'system', text: `<strong>Backend Error:</strong> ${eventData.data}` };
+        isLoading.value = false;
+        break;
+
+      default:
+        console.warn("Unknown SSE event type:", eventData);
+        message = { id: Date.now(), author: 'system', text: `Unknown event: ${event.data}` };
+    }
+
+    messages.value.push(message);
+    scrollToBottom();
   };
 
   eventSource.onerror = (error) => {
-    console.error("SSE Error:", error);
-    messages.value.push({ id: Date.now(), author: 'system', text: 'Connection to server lost.' });
+    console.error('SSE Error:', error);
+    messages.value.push({ id: Date.now(), author: 'system', text: '<strong>Connection to server lost.</strong> Please refresh the page to reconnect.' });
     eventSource.close();
+    isLoading.value = false;
   };
 });
 </script>
@@ -56,5 +124,35 @@ onMounted(() => {
   padding: 1rem;
   border: 1px solid #333;
   margin-bottom: 1rem;
+}
+</style>
+
+<style>
+/* Global styles for chat output formatting */
+pre {
+  background-color: #1e1e1e;
+  color: #d4d4d4;
+  padding: 0.75rem;
+  border-radius: 6px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9em;
+}
+code {
+    background-color: #333;
+    padding: 2px 4px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+}
+details {
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 0.5rem;
+    margin-top: 0.5rem;
+}
+summary {
+    cursor: pointer;
+    font-weight: bold;
 }
 </style>

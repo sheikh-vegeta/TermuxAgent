@@ -1,3 +1,4 @@
 fastapi
 uvicorn[standard]
+httpx
 # The user can add other dependencies like 'click', 'redis', etc., as they build out the functionality.

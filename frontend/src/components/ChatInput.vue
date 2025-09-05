@@ -3,14 +3,24 @@
     <input
       v-model="inputText"
       @keyup.enter="handleSubmit"
-      placeholder="Type your message..."
+      :placeholder="isLoading ? 'Agent is thinking...' : 'Type your command...'"
+      :disabled="isLoading"
     />
-    <button @click="handleSubmit">Send</button>
+    <button @click="handleSubmit" :disabled="isLoading">
+      {{ isLoading ? '...' : 'Send' }}
+    </button>
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+
+defineProps({
+  isLoading: {
+    type: Boolean,
+    default: false,
+  },
+})
 
 const inputText = ref('')
 const emit = defineEmits(['send'])
@@ -49,5 +59,12 @@ button {
 }
 button:hover {
   background-color: #005f9e;
+}
+button:disabled, input:disabled {
+  background-color: #555;
+  cursor: not-allowed;
+}
+button:disabled:hover {
+  background-color: #555;
 }
 </style>
